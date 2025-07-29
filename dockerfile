@@ -4,7 +4,7 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-COPY smart_agriculture/ /app/
+COPY . /app/
 
 RUN pip install flask
 
