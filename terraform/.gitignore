@@ -1,6 +1,15 @@
-# Terraform ignore rules
+# Terraform state and backup files
 .terraform/
 *.tfstate
 *.tfstate.backup
+
+# Logs
 *.log
 crash.log
+
+# AWS credentials / secrets (if any)
+*.ppk
+*.key
+*.pub
+*.zip
+*.exe

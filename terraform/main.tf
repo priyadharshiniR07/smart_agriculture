@@ -34,27 +34,18 @@ resource "aws_security_group" "app_sg" {
 }
 
 resource "aws_instance" "app_server" {
-  ami           = "ami-010876b9ddd38475e" # Ubuntu 20.04 LTS in ap-southeast-2
-  instance_type = "t2.micro"
-  key_name      = aws_key_pair.deployer.key_name
+  ami                    = "ami-010876b9ddd38475e" # Ubuntu 20.04 LTS
+  instance_type          = "t2.micro"
+  key_name               = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.app_sg.id]
 
-  user_data = <<-EOF
-              #!/bin/bash
-              apt update -y
-              apt install -y docker.io
-              systemctl start docker
-              usermod -aG docker ubuntu
-              docker pull priyadharshiniro7/agriculture-docker-app
-              docker run -d -p 8000:8000 priyadharshiniro7/agriculture-docker-app
-              EOF
+  user_data = file("${path.module}/user_data.sh")
 
   tags = {
     Name = "agricultureappserver"
   }
 }
 
-# ✅ EXISTING OUTPUTS
 output "app_url" {
   value = "http://${aws_instance.app_server.public_ip}:8000"
 }
@@ -63,7 +54,6 @@ output "ssh_command" {
   value = "ssh -i ~/.ssh/id_rsa ubuntu@${aws_instance.app_server.public_ip}"
 }
 
-# ✅ NEW OUTPUT FOR JENKINS PIPELINE
 output "instance_public_ip" {
   value = aws_instance.app_server.public_ip
 }
