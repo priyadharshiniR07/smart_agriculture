@@ -2,14 +2,14 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'priyadharshiniro7/agriculture-docker-app'
+        IMAGE_NAME = 'priyadharshiniro7/smart_agriculture'
         AWS_REGION = 'ap-southeast-2'
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'weather', url: 'https://github.com/priyadharshiniR07/smart_agriculture.git'
+                git branch: 'master', url: 'https://github.com/priyadharshiniR07/smart_agriculture.git'
             }
         }
 
@@ -19,43 +19,32 @@ pipeline {
             }
         }
 
-        stage('Login to Docker Hub') {
+        stage('Login to Docker Hub & Push Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    bat """
-                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
-                    """
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
+                    bat "docker push %IMAGE_NAME%"
                 }
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Terraform Init & Apply') {
             steps {
-                bat "docker push %IMAGE_NAME%"
-            }
-        }
-
-        stage('Terraform Init') {
-            steps {
-                dir('terraform') {
-                    bat 'terraform init'
+                withAWS(credentials: 'aws-creds', region: "${env.AWS_REGION}") {
+                    dir('terraform') {
+                        bat "terraform init"
+                        bat "terraform apply -auto-approve"
+                    }
                 }
             }
         }
 
-        stage('Terraform Apply') {
+        stage('Deployment Complete') {
             steps {
-                dir('terraform') {
-                    bat 'terraform apply -auto-approve'
+                script {
+                    def ec2_ip = bat(script: "cd terraform && terraform output -raw instance_public_ip", returnStdout: true).trim()
+                    echo "🚀 Employee Management App running at: http://${ec2_ip}:8000"
                 }
-            }
-        }
-
-        stage('Deployment Verification') {
-            steps {
-                echo "Waiting for EC2 instance to initialize..."
-                sleep time: 90, unit: 'SECONDS'
-                echo "🚀 Deployed! Access your Flask app at: http://<EC2-PUBLIC-IP>:8000"
             }
         }
     }
